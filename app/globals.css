@@ -1,0 +1,131 @@
+@import "tailwindcss";
+
+:root {
+  --background: #0a0a0e;
+  --foreground: #e5e7eb;
+  --primary: #7c3aed;
+  --secondary: #0ea5e9;
+  --accent: #fbbf24;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-secondary: var(--secondary);
+  --color-accent: var(--accent);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+@media print {
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  html,
+  body {
+    background: #0a0a0e !important;
+    color: #e5e7eb !important;
+  }
+
+  .print-report {
+    max-width: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  .print-card {
+    border: 1px solid rgba(229, 231, 235, 0.18) !important;
+    background: rgba(10, 10, 14, 0.95) !important;
+    border-radius: 14px !important;
+  }
+
+  .print-radar {
+    height: 420px !important;
+  }
+
+  .print-header {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 12px !important;
+    padding: 10px 12px !important;
+    border: 1px solid rgba(229, 231, 235, 0.18) !important;
+    border-radius: 14px !important;
+    background: rgba(10, 10, 14, 0.95) !important;
+  }
+
+  .print-footer {
+    position: fixed !important;
+    bottom: 10mm !important;
+    left: 14mm !important;
+    right: 14mm !important;
+    display: flex !important;
+    justify-content: space-between !important;
+    gap: 10px !important;
+    font-size: 10px !important;
+    color: rgba(229, 231, 235, 0.65) !important;
+  }
+
+  .page-break {
+    page-break-before: always !important;
+    break-before: page !important;
+  }
+
+  @page {
+    size: A4;
+    margin: 14mm;
+  }
+}
+
+.print-only {
+  display: none;
+}
+
+.dark-watermark {
+  display: none;
+}
+
+.dark-watermark__line {
+  white-space: nowrap;
+}
+
+.report-legal-shield {
+  border: 1px solid rgba(229, 231, 235, 0.18);
+  background: rgba(229, 231, 235, 0.06);
+  border-radius: 14px;
+}
+
+@media print {
+  .dark-watermark {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 9999 !important;
+    display: grid !important;
+    place-content: center !important;
+    gap: 18px !important;
+    transform: rotate(-26deg) !important;
+    opacity: 0.02 !important;
+    color: #f8fafc !important;
+    font-size: 10px !important;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+      "Liberation Mono", "Courier New", monospace !important;
+    pointer-events: none !important;
+  }
+}

@@ -9,6 +9,32 @@ function getSupabaseEnv() {
   return { url, anonKey };
 }
 
+function getErrorCode(err: unknown) {
+  const e = err as { cause?: unknown; code?: unknown; message?: unknown };
+  const cause = e?.cause as { code?: unknown; message?: unknown } | undefined;
+  const code = typeof cause?.code === "string" ? cause.code : typeof e?.code === "string" ? e.code : null;
+  const message =
+    typeof cause?.message === "string"
+      ? cause.message
+      : typeof e?.message === "string"
+        ? e.message
+        : null;
+  return { code, message };
+}
+
+async function probeSupabase(url: string, anonKey: string) {
+  const endpoint = `${url.replace(/\/+$/, "")}/rest/v1/`;
+  const res = await fetch(endpoint, {
+    method: "HEAD",
+    headers: {
+      apikey: anonKey,
+      authorization: `Bearer ${anonKey}`,
+    },
+    cache: "no-store",
+  });
+  return res.status;
+}
+
 function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === "object" && v !== null && !Array.isArray(v);
 }
@@ -21,6 +47,20 @@ export async function POST(req: Request) {
   const env = getSupabaseEnv();
   if (!env) {
     return NextResponse.json({ ok: false, error: "supabase_env_missing" }, { status: 500 });
+  }
+
+  try {
+    await probeSupabase(env.url, env.anonKey);
+  } catch (err) {
+    const { code, message } = getErrorCode(err);
+    return NextResponse.json(
+      {
+        ok: false,
+        error: "supabase_unreachable",
+        details: code ? `${code}${message ? `: ${message}` : ""}` : message ?? "fetch_failed",
+      },
+      { status: 502 },
+    );
   }
 
   let body: unknown;

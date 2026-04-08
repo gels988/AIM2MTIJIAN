@@ -9,6 +9,37 @@ function getSupabaseEnv() {
   return { url, anonKey };
 }
 
+function getErrorCode(err: unknown) {
+  const e = err as { cause?: unknown; code?: unknown; message?: unknown };
+  const cause = e?.cause as { code?: unknown; message?: unknown } | undefined;
+  const code = typeof cause?.code === "string" ? cause.code : typeof e?.code === "string" ? e.code : null;
+  const message =
+    typeof cause?.message === "string"
+      ? cause.message
+      : typeof e?.message === "string"
+        ? e.message
+        : null;
+  return { code, message };
+}
+
+async function probeSupabase(url: string, anonKey: string) {
+  const endpoint = `${url.replace(/\/+$/, "")}/rest/v1/`;
+  try {
+    const res = await fetch(endpoint, {
+      method: "HEAD",
+      headers: {
+        apikey: anonKey,
+        authorization: `Bearer ${anonKey}`,
+      },
+      cache: "no-store",
+    });
+    return { ok: true, status: res.status };
+  } catch (err) {
+    const { code, message } = getErrorCode(err);
+    return { ok: false, status: null as number | null, code, message };
+  }
+}
+
 export async function GET() {
   const env = getSupabaseEnv();
   if (!env) {
@@ -18,6 +49,18 @@ export async function GET() {
   const supabase = createClient(env.url, env.anonKey, {
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
   });
+
+  const probe = await probeSupabase(env.url, env.anonKey);
+  if (!probe.ok) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: "supabase_unreachable",
+        details: probe.code ? `${probe.code}${probe.message ? `: ${probe.message}` : ""}` : probe.message ?? "fetch_failed",
+      },
+      { status: 502 },
+    );
+  }
 
   const { error } = await supabase.from("app_users").select("id").limit(1);
   if (error) {

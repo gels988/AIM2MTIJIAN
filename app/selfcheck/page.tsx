@@ -32,7 +32,18 @@ export default function SelfCheckPage() {
       try {
         const res = await fetch(url, { cache: "no-store" });
         if (!res.ok) {
-          next.push({ id, label, ok: false, details: `HTTP ${res.status}` });
+          let details = `HTTP ${res.status}`;
+          try {
+            const ct = res.headers.get("content-type") || "";
+            if (ct.includes("application/json")) {
+              const json = (await res.json()) as unknown;
+              details = `${details} ${JSON.stringify(json).slice(0, 240)}`;
+            } else {
+              const text = await res.text();
+              if (text.trim()) details = `${details} ${text.slice(0, 240)}`;
+            }
+          } catch {}
+          next.push({ id, label, ok: false, details });
           return;
         }
         if (mode === "json") {

@@ -1,4 +1,3 @@
-import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 
 function getSupabaseEnv() {
@@ -46,10 +45,6 @@ export async function GET() {
     return NextResponse.json({ ok: false, error: "supabase_env_missing" }, { status: 500 });
   }
 
-  const supabase = createClient(env.url, env.anonKey, {
-    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
-  });
-
   const probe = await probeSupabase(env.url, env.anonKey);
   if (!probe.ok) {
     return NextResponse.json(
@@ -62,10 +57,35 @@ export async function GET() {
     );
   }
 
-  const { error } = await supabase.from("app_users").select("id").limit(1);
-  if (error) {
+  const baseUrl = env.url.replace(/\/+$/, "");
+  const queryUrl = `${baseUrl}/rest/v1/app_users?select=id&limit=1`;
+  try {
+    const res = await fetch(queryUrl, {
+      method: "GET",
+      headers: {
+        apikey: env.anonKey,
+        authorization: `Bearer ${env.anonKey}`,
+      },
+      cache: "no-store",
+    });
+    if (!res.ok) {
+      const ct = res.headers.get("content-type") || "";
+      const body = ct.includes("application/json")
+        ? JSON.stringify(await res.json()).slice(0, 240)
+        : (await res.text()).slice(0, 240);
+      return NextResponse.json(
+        { ok: false, error: "supabase_http_error", details: `HTTP ${res.status} ${body}` },
+        { status: 502 },
+      );
+    }
+  } catch (err) {
+    const { code, message } = getErrorCode(err);
     return NextResponse.json(
-      { ok: false, error: "supabase_query_failed", details: error.message },
+      {
+        ok: false,
+        error: "supabase_query_failed",
+        details: code ? `${code}${message ? `: ${message}` : ""}` : message ?? "fetch_failed",
+      },
       { status: 502 },
     );
   }

@@ -146,6 +146,17 @@ export default function SelfCheckPage() {
         <div className="mt-6 rounded-2xl border border-slate-800 bg-slate-900/25 p-5 text-xs text-slate-400">
           DB 检查依赖服务端环境变量：SUPABASE_URL、SUPABASE_ANON_KEY（或 NEXT_PUBLIC_SUPABASE_URL、NEXT_PUBLIC_SUPABASE_ANON_KEY）。
         </div>
+
+        <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-900/25 p-5 text-xs text-slate-300">
+          <div className="text-sm font-semibold text-slate-100">DB 修复指南（只看这一段就够）</div>
+          <div className="mt-3 space-y-2">
+            <div>1）先打开：/api/citizens/ping（末尾不要带“。”等标点）看返回 JSON 里的 error/details。</div>
+            <div>2）如果是 Invalid API key：去 Supabase Settings → API 复制本项目的 anon public key（通常 eyJ… 开头）。</div>
+            <div>3）如果是 ENOTFOUND：说明 Project URL 已失效或填错，必须换成仍存在的 https://xxxx.supabase.co。</div>
+            <div>4）更换变量后，在 Vercel 里对 Production 做一次 Redeploy（否则新变量不会注入运行时）。</div>
+            <div>5）新项目是空库时，去 Supabase SQL Editor 执行 scripts/init-db.sql 建表与 RLS 策略。</div>
+          </div>
+        </div>
       </div>
     </main>
   );

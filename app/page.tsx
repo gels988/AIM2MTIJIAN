@@ -245,6 +245,7 @@ export default function MainPage() {
   const [w2wOnline, setW2wOnline] = useState<boolean | null>(null);
   const [pulseSeq, setPulseSeq] = useState(0);
   const [pulseOn, setPulseOn] = useState(false);
+  const [guideOpen, setGuideOpen] = useState(false);
 
   const [inspectLoading, setInspectLoading] = useState(false);
   const [inspect, setInspect] = useState<Extract<InspectResponse, { status: "success" }> | null>(
@@ -563,6 +564,14 @@ export default function MainPage() {
               </Link>
               <button
                 type="button"
+                onClick={() => setGuideOpen(true)}
+                className="inline-flex items-center gap-2 rounded-xl bg-white/5 px-3 py-2 text-slate-200 shadow-[0_0_0_1px_rgba(229,231,235,0.12)] transition hover:bg-white/10"
+              >
+                <KeyRound className="h-4 w-4 text-sky-200/90" />
+                API 获取指南
+              </button>
+              <button
+                type="button"
                 onClick={refreshChannels}
                 className="inline-flex items-center gap-2 rounded-xl bg-white/5 px-3 py-2 text-slate-200 shadow-[0_0_0_1px_rgba(229,231,235,0.12)] transition hover:bg-white/10"
               >
@@ -597,6 +606,100 @@ export default function MainPage() {
             </div>
           </div>
         </header>
+
+        {guideOpen ? (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4"
+            role="dialog"
+            aria-modal="true"
+            onClick={() => setGuideOpen(false)}
+          >
+            <div
+              className="w-full max-w-2xl rounded-2xl border border-slate-800 bg-slate-950 p-6 shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <div className="text-lg font-semibold text-slate-100">API 获取指南（保姆版）</div>
+                  <div className="mt-1 text-xs text-slate-400">
+                    目标：让你知道“去哪里拿 URL/Key、填到哪里、怎么验证是否成功”
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setGuideOpen(false)}
+                  className="rounded-xl bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200 shadow-[0_0_0_1px_rgba(229,231,235,0.12)] transition hover:bg-white/10"
+                >
+                  关闭
+                </button>
+              </div>
+
+              <div className="mt-5 space-y-4 text-sm text-slate-200">
+                <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-4">
+                  <div className="text-sm font-semibold text-slate-100">A. 被测智能体 Endpoint / Key</div>
+                  <div className="mt-2 text-sm text-slate-200/90">
+                    Endpoint 是对方智能体提供的 API 地址；Key 是对方给你的访问令牌（如有）。
+                  </div>
+                  <div className="mt-2 text-xs text-slate-400">
+                    如果你只是想体验本系统 UI：可以先随便填一个可访问的 URL，再用“加载考题/输入回答”跑通流程。
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-4">
+                  <div className="text-sm font-semibold text-slate-100">B. Supabase（子民系统/自检 DB）</div>
+                  <div className="mt-2 text-sm text-slate-200/90">
+                    Supabase 控制台 → 进入你的 Project → 左下角 Settings → API：
+                  </div>
+                  <div className="mt-2 font-mono text-xs text-slate-300">
+                    SUPABASE_URL = https://xxxx.supabase.co
+                    <br />
+                    SUPABASE_ANON_KEY = anon public（通常以 eyJ… 开头）
+                  </div>
+                  <div className="mt-2 text-xs text-slate-400">
+                    关键校验：anon key 解码后的 payload 里 ref 必须匹配你的 Project（例如 ldfscg…）。
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-4">
+                  <div className="text-sm font-semibold text-slate-100">C. Vercel（把变量“注入生产环境”）</div>
+                  <div className="mt-2 text-sm text-slate-200/90">
+                    Vercel 项目 → Settings → Environment Variables：把 SUPABASE_URL / SUPABASE_ANON_KEY
+                    填到 Production，然后 Redeploy。
+                  </div>
+                  <div className="mt-2 text-xs text-slate-400">
+                    验证入口：
+                    <a
+                      className="ml-2 text-sky-200 underline"
+                      href="/api/citizens/ping"
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      /api/citizens/ping
+                    </a>
+                    <span className="ml-2">看到 ok=true 才算 DB 心跳恢复。</span>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  <Link
+                    href="/selfcheck"
+                    className="inline-flex items-center gap-2 rounded-xl bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200 shadow-[0_0_0_1px_rgba(229,231,235,0.12)] transition hover:bg-white/10"
+                  >
+                    <Wrench className="h-4 w-4 text-emerald-200/90" />
+                    打开自检系统
+                  </Link>
+                  <Link
+                    href="/citizens"
+                    className="inline-flex items-center gap-2 rounded-xl bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200 shadow-[0_0_0_1px_rgba(229,231,235,0.12)] transition hover:bg-white/10"
+                  >
+                    <Users className="h-4 w-4 text-purple-200/90" />
+                    打开子民系统
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : null}
 
         {errorMsg ? (
           <div className="mb-6 rounded-2xl border border-rose-500/25 bg-rose-500/10 px-5 py-4 text-sm text-rose-100 shadow-[0_0_0_1px_rgba(244,63,94,0.18)]">

@@ -45,6 +45,12 @@ type InspectResponse =
     }
   | { error: string };
 
+type Challenge = {
+  index: number;
+  title: string;
+  body: string;
+};
+
 function statusPill(status: PublicMetricRow["status"]) {
   switch (status) {
     case "excellent":
@@ -226,6 +232,35 @@ function langButtonLabel(l: Lang) {
   }
 }
 
+function parseChallenges(source: string | null): Challenge[] {
+  if (!source) return [];
+  const lines = source.split(/\r?\n/);
+  const headingIndices: number[] = [];
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i] ?? "";
+    if (!/^##\s+/.test(line)) continue;
+    const text = line.replace(/^##\s+/, "").trim();
+    if (!text) continue;
+    const looksLikeQuestion = /^\d+[\s.:：-]/.test(text) || /^Q\d+/i.test(text) || text.includes("考题");
+    if (!looksLikeQuestion) continue;
+    headingIndices.push(i);
+  }
+
+  if (headingIndices.length === 0) return [];
+
+  const items: Challenge[] = [];
+  for (let j = 0; j < headingIndices.length; j += 1) {
+    const start = headingIndices[j]!;
+    const end = j + 1 < headingIndices.length ? headingIndices[j + 1]! : lines.length;
+    const titleLine = (lines[start] ?? "").replace(/^##\s+/, "").trim();
+    const body = lines.slice(start, end).join("\n").trim();
+    if (!titleLine || !body) continue;
+    items.push({ index: items.length + 1, title: titleLine, body });
+    if (items.length >= 10) break;
+  }
+  return items;
+}
+
 export default function MainPage() {
   const [lang, setLang] = useState<Lang>("zh");
   const [agentEndpoint, setAgentEndpoint] = useState("");
@@ -234,6 +269,7 @@ export default function MainPage() {
   const [answers, setAnswers] = useState("");
   const [questions, setQuestions] = useState<string | null>(null);
   const [questionsLoading, setQuestionsLoading] = useState(false);
+  const [selectedChallenge, setSelectedChallenge] = useState<number>(1);
 
   const [active, setActive] = useState(false);
   const [authLoading, setAuthLoading] = useState(true);
@@ -259,6 +295,12 @@ export default function MainPage() {
   const [frogLog, setFrogLog] = useState<string[]>([]);
 
   const t = UI_TEXT[lang];
+
+  const challenges = useMemo(() => parseChallenges(questions), [questions]);
+  const selected = useMemo(
+    () => challenges.find((c) => c.index === selectedChallenge) ?? null,
+    [challenges, selectedChallenge],
+  );
 
   const triggerPulse = useCallback(() => {
     setPulseSeq((v) => v + 1);
@@ -348,6 +390,7 @@ export default function MainPage() {
       }
       const text = await res.text();
       setQuestions(text);
+      setSelectedChallenge(1);
       setApiOnline(true);
     } catch {
       setQuestions(null);
@@ -811,10 +854,18 @@ export default function MainPage() {
             </div>
 
             <div className="space-y-4">
-              <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="text-sm font-semibold text-slate-200">{t.questionBoxTitle}</div>
-                  <div className="flex items-center gap-2">
+              <div className="relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-950/35 p-5 shadow-[0_0_0_1px_rgba(15,23,42,0.35)]">
+                <div className="pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full bg-[radial-gradient(circle_at_center,rgba(56,189,248,0.22),rgba(15,23,42,0)_60%)] blur-2xl" />
+                <div className="pointer-events-none absolute -bottom-24 -left-24 h-72 w-72 rounded-full bg-[radial-gradient(circle_at_center,rgba(168,85,247,0.18),rgba(15,23,42,0)_60%)] blur-2xl" />
+
+                <div className="relative flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                  <div>
+                    <div className="text-sm font-semibold text-slate-100">v2 十大考题一览</div>
+                    <div className="mt-1 text-xs text-slate-400">
+                      选中一题可预览，支持单题复制 / 全量复制
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
                     <button
                       type="button"
                       disabled={!questions}
@@ -835,9 +886,106 @@ export default function MainPage() {
                     </a>
                   </div>
                 </div>
-                <pre className="mt-3 max-h-56 overflow-auto whitespace-pre-wrap break-words rounded-xl border border-slate-800 bg-slate-950 px-4 py-3 text-xs text-slate-300">
-                  {questions ?? "点击左侧“加载《十大考题》”以拉取题库。"}
-                </pre>
+
+                <div className="relative mt-4 grid grid-cols-1 gap-3 lg:grid-cols-2">
+                  {questionsLoading ? (
+                    Array.from({ length: 10 }).map((_, idx) => (
+                      <div
+                        key={`sk-${idx}`}
+                        className="h-[70px] rounded-2xl border border-slate-800 bg-white/5"
+                      />
+                    ))
+                  ) : challenges.length ? (
+                    challenges.map((c) => {
+                      const activeCard = c.index === selectedChallenge;
+                      const grad =
+                        c.index % 5 === 1
+                          ? "from-sky-400/50 to-purple-500/40"
+                          : c.index % 5 === 2
+                            ? "from-emerald-400/45 to-sky-500/35"
+                            : c.index % 5 === 3
+                              ? "from-purple-500/45 to-fuchsia-500/35"
+                              : c.index % 5 === 4
+                                ? "from-amber-400/45 to-sky-500/30"
+                                : "from-rose-400/40 to-purple-500/35";
+                      return (
+                        <div key={c.index} className="relative">
+                          <div
+                            className={`pointer-events-none absolute -inset-px rounded-2xl bg-gradient-to-r ${grad} ${
+                              activeCard ? "opacity-35" : "opacity-15"
+                            } blur`}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setSelectedChallenge(c.index)}
+                            className={`relative flex w-full items-center justify-between gap-4 rounded-2xl border bg-slate-950/70 px-4 py-4 text-left transition ${
+                              activeCard
+                                ? "border-sky-300/35 shadow-[0_0_0_1px_rgba(56,189,248,0.25)]"
+                                : "border-slate-800 hover:border-slate-700"
+                            }`}
+                          >
+                            <div className="flex min-w-0 items-center gap-3">
+                              <div
+                                className={`flex h-9 w-9 items-center justify-center rounded-xl text-sm font-bold ${
+                                  activeCard
+                                    ? "bg-sky-500/15 text-sky-100 shadow-[0_0_0_1px_rgba(56,189,248,0.35)]"
+                                    : "bg-white/5 text-slate-200 shadow-[0_0_0_1px_rgba(229,231,235,0.12)]"
+                                }`}
+                              >
+                                {c.index}
+                              </div>
+                              <div className="min-w-0">
+                                <div className="truncate text-sm font-semibold text-slate-100">
+                                  {c.title}
+                                </div>
+                                <div className="mt-1 truncate text-xs text-slate-400">
+                                  点击查看题目正文
+                                </div>
+                              </div>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                void copyText(c.body);
+                              }}
+                              className="inline-flex h-9 items-center justify-center gap-2 rounded-xl bg-white/5 px-3 text-xs font-semibold text-slate-200 shadow-[0_0_0_1px_rgba(229,231,235,0.12)] transition hover:bg-white/10"
+                            >
+                              <Copy className="h-4 w-4" />
+                              单题复制
+                            </button>
+                          </button>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div className="col-span-full rounded-2xl border border-slate-800 bg-slate-950/60 px-4 py-5 text-sm text-slate-300">
+                      {questions ? "未能解析到 10 道题目标题，请使用右上“打开题库/复制题库”。" : "点击左侧“加载《十大考题》”以拉取题库。"}
+                    </div>
+                  )}
+                </div>
+
+                {selected ? (
+                  <div className="relative mt-4 rounded-2xl border border-slate-800 bg-[#050b12] p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="text-xs font-semibold text-slate-200">
+                        预览 · 第 {selected.index} 题
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => void copyText(selected.body)}
+                        className="inline-flex h-9 items-center justify-center gap-2 rounded-xl bg-emerald-500/15 px-3 text-xs font-semibold text-emerald-100 shadow-[0_0_0_1px_rgba(16,185,129,0.32)] transition hover:bg-emerald-500/20"
+                      >
+                        <Copy className="h-4 w-4" />
+                        复制预览块
+                      </button>
+                    </div>
+                    <pre className="mt-3 max-h-72 overflow-auto whitespace-pre-wrap break-words font-mono text-xs leading-6 text-slate-200/90">
+                      {selected.body}
+                    </pre>
+                  </div>
+                ) : null}
               </div>
 
               <textarea

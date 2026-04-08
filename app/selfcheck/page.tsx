@@ -144,7 +144,7 @@ export default function SelfCheckPage() {
         </div>
 
         <div className="mt-6 rounded-2xl border border-slate-800 bg-slate-900/25 p-5 text-xs text-slate-400">
-          DB 检查依赖服务端环境变量：SUPABASE_URL、SUPABASE_ANON_KEY；未设置会返回 supabase_env_missing。
+          DB 检查依赖服务端环境变量：SUPABASE_URL、SUPABASE_ANON_KEY（或 NEXT_PUBLIC_SUPABASE_URL、NEXT_PUBLIC_SUPABASE_ANON_KEY）。
         </div>
       </div>
     </main>

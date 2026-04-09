@@ -76,3 +76,37 @@ create policy app_users_auth_insert on public.app_users
   to authenticated
   with check (true);
 
+create table if not exists public.heartbeat_events (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz not null default now(),
+  source text not null default 'vercel_cron',
+  note text
+);
+
+create index if not exists idx_heartbeat_events_created_at on public.heartbeat_events (created_at desc);
+
+alter table public.heartbeat_events enable row level security;
+
+drop policy if exists heartbeat_events_anon_select on public.heartbeat_events;
+create policy heartbeat_events_anon_select on public.heartbeat_events
+  for select
+  to anon
+  using (true);
+
+drop policy if exists heartbeat_events_anon_insert on public.heartbeat_events;
+create policy heartbeat_events_anon_insert on public.heartbeat_events
+  for insert
+  to anon
+  with check (true);
+
+drop policy if exists heartbeat_events_auth_select on public.heartbeat_events;
+create policy heartbeat_events_auth_select on public.heartbeat_events
+  for select
+  to authenticated
+  using (true);
+
+drop policy if exists heartbeat_events_auth_insert on public.heartbeat_events;
+create policy heartbeat_events_auth_insert on public.heartbeat_events
+  for insert
+  to authenticated
+  with check (true);

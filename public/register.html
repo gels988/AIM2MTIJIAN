@@ -432,6 +432,7 @@
     (async function () {
       const STORAGE_KEY = "aim2m_register_records_v1";
       const AIM2M_STATUS_KEY = "AIM2M_STATUS";
+      const OWNER_PROFILE_KEY = "AIM2M_OWNER_PROFILE";
       const identifierInput = document.getElementById("identifier");
       const referrerInput = document.getElementById("referrerId");
       const submitBtn = document.getElementById("submitBtn");
@@ -504,6 +505,18 @@
 
       function saveRecords(records) {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+      }
+
+      function saveOwnerProfile(record) {
+        if (!record || !record.remoteUserId || !record.referralLink) return;
+        const referralCode = new URL(record.referralLink, window.location.origin).searchParams.get("c") || "";
+        const profile = {
+          userId: record.remoteUserId,
+          identifier: record.identifier,
+          referralCode: referralCode,
+          referralLink: record.referralLink
+        };
+        localStorage.setItem(OWNER_PROFILE_KEY, JSON.stringify(profile));
       }
 
       function setStatus(text, tone) {
@@ -588,6 +601,7 @@
         record.synced = true;
         record.remoteUserId = json.user && (json.user.id || json.user.phone_number || "");
         record.referralLink = typeof json.referral_link === "string" ? json.referral_link : "";
+        record.rewardCodeIssued = typeof json.reward_code_issued === "string" ? json.reward_code_issued : "";
         record.syncedAt = new Date().toISOString();
         return record;
       }
@@ -619,9 +633,15 @@
         try {
           await syncOne(record);
           saveRecords(records);
+          saveOwnerProfile(record);
           renderRecords();
           setReferralLink(record.referralLink);
-          setStatus("注册成功：本地与云端均已完成记录。", "success");
+          setStatus(
+            record.rewardCodeIssued
+              ? "注册成功：本地与云端均已完成记录。已触发推荐奖励，获得免费激活码：" + record.rewardCodeIssued
+              : "注册成功：本地与云端均已完成记录。",
+            "success"
+          );
         } catch (error) {
           renderRecords();
           setStatus("云端暂不可用，记录已保存在本地浏览器档案库。稍后可点击“重试同步本地记录”。错误：" + (error && error.message ? error.message : "unknown"), "warn");
@@ -652,12 +672,12 @@
 
         saveRecords(records);
         renderRecords();
+        const latestSynced = records.slice().reverse().find((item) => item.synced && item.referralLink);
+        if (latestSynced) saveOwnerProfile(latestSynced);
         if (success === pending.length) {
-          const latestSynced = records.slice().reverse().find((item) => item.synced && item.referralLink);
           setReferralLink(latestSynced ? latestSynced.referralLink : "");
           setStatus("所有本地记录已同步到云端。", "success");
         } else if (success > 0) {
-          const latestSynced = records.slice().reverse().find((item) => item.synced && item.referralLink);
           setReferralLink(latestSynced ? latestSynced.referralLink : "");
           setStatus("部分记录同步成功，剩余记录继续保存在本地。", "warn");
         } else {

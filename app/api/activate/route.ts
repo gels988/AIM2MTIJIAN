@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
 import { SignJWT } from "jose";
+import { createClient } from "@supabase/supabase-js";
 
-import { isUnifiedActivationCodeValid } from "@/src/security/unified_activation";
+import {
+  buildRewardClaimSource,
+  isUnifiedActivationCodeValid,
+  normalizeActivationCode,
+} from "@/src/security/unified_activation";
 
 function originAllowed(req: Request) {
   const origin = req.headers.get("origin");
@@ -13,6 +18,78 @@ function originAllowed(req: Request) {
   } catch {
     return false;
   }
+}
+
+function getSupabaseEnv() {
+  const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey =
+    process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !anonKey) return null;
+  return { url, anonKey };
+}
+
+async function resolveRewardCode(code: string) {
+  const env = getSupabaseEnv();
+  if (!env) return { ok: false as const };
+
+  const supabase = createClient(env.url, env.anonKey, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+  });
+  const normalized = normalizeActivationCode(code);
+  if (!normalized) return { ok: false as const };
+
+  const rewardEvent = await supabase
+    .from("heartbeat_events")
+    .select("source, note")
+    .like("source", `reward:%:${normalized}`)
+    .maybeSingle();
+
+  if (rewardEvent.error || !rewardEvent.data) {
+    return { ok: false as const };
+  }
+
+  const claimSource = buildRewardClaimSource(normalized);
+  const existingClaim = await supabase
+    .from("heartbeat_events")
+    .select("id")
+    .eq("source", claimSource)
+    .maybeSingle();
+
+  if (existingClaim.error) {
+    return { ok: false as const };
+  }
+
+  if (existingClaim.data) {
+    return { ok: false as const, claimed: true };
+  }
+
+  let ownerId = "";
+  try {
+    const parsed = JSON.parse(rewardEvent.data.note ?? "{}") as { owner_id?: string };
+    ownerId = typeof parsed.owner_id === "string" ? parsed.owner_id : "";
+  } catch {
+    ownerId = "";
+  }
+
+  const claimed = await supabase
+    .from("heartbeat_events")
+    .insert({
+      source: claimSource,
+      note: JSON.stringify({
+        kind: "reward_claim",
+        code: normalized,
+        owner_id: ownerId,
+        claimed_at: new Date().toISOString(),
+      }),
+    })
+    .select("id")
+    .maybeSingle();
+
+  if (claimed.error) {
+    return { ok: false as const };
+  }
+
+  return { ok: true as const };
 }
 
 export async function POST(req: Request) {
@@ -39,7 +116,9 @@ export async function POST(req: Request) {
   const mode = (body as { mode?: unknown }).mode;
 
   const isPaymentUnlock = mode === "payment";
-  const isCodeUnlock = isUnifiedActivationCodeValid(code, masterCode);
+  const isMasterCodeUnlock = isUnifiedActivationCodeValid(code, masterCode);
+  const rewardUnlock = !isMasterCodeUnlock ? await resolveRewardCode(String(code ?? "")) : { ok: false as const };
+  const isCodeUnlock = isMasterCodeUnlock || rewardUnlock.ok;
 
   if (!isPaymentUnlock && !isCodeUnlock) {
     return NextResponse.json({ success: false }, { status: 403 });
@@ -53,7 +132,7 @@ export async function POST(req: Request) {
   const res = NextResponse.json({
     success: true,
     active: true,
-    mode: isCodeUnlock ? "code" : "payment",
+    mode: isPaymentUnlock ? "payment" : isMasterCodeUnlock ? "code" : "reward",
   });
   res.cookies.set("aim2m_auth", token, {
     httpOnly: true,

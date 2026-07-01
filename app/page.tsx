@@ -22,10 +22,13 @@ import {
 import RadarChart from "@/app/components/RadarChart";
 import {
   AIM2M_ACTIVATION_NOTICE_KEY,
+  AIM2M_OWNER_PROFILE_KEY,
   AIM2M_STATUS_KEY,
+  OwnerProfile,
   isStoredUnlockStatus,
 } from "@/src/security/unified_activation";
 import {
+  getJson,
   getString,
   removeKey,
   setString,
@@ -61,6 +64,24 @@ type Challenge = {
   title: string;
   body: string;
 };
+
+type RewardStatusResponse =
+  | {
+      ok: true;
+      owner: {
+        id: string;
+        identifier: string;
+        referral_code: string | null;
+        referral_link: string;
+      };
+      referral_count: number;
+      milestone: number;
+      remaining_to_reward: number;
+      next_reward_at: number;
+      reward_count: number;
+      active_reward_code: string | null;
+    }
+  | { ok: false; error: string };
 
 function statusPill(status: PublicMetricRow["status"]) {
   switch (status) {
@@ -306,6 +327,8 @@ export default function MainPage() {
   const [generatedAt, setGeneratedAt] = useState<string>("");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [ownerProfile, setOwnerProfile] = useState<OwnerProfile | null>(null);
+  const [rewardStatus, setRewardStatus] = useState<RewardStatusResponse | null>(null);
 
   const [frogInput, setFrogInput] = useState("");
   const [frogLine, setFrogLine] = useState("[PROT-1.1] BinaryBagua: --- | Status: INIT");
@@ -360,6 +383,7 @@ export default function MainPage() {
       setSuccessMsg(pendingNotice);
       removeKey(AIM2M_ACTIVATION_NOTICE_KEY);
     }
+    setOwnerProfile(getJson<OwnerProfile>(AIM2M_OWNER_PROFILE_KEY));
   }, []);
 
   const refreshChannels = useCallback(async () => {
@@ -380,6 +404,36 @@ export default function MainPage() {
   useEffect(() => {
     void refreshChannels();
   }, [refreshChannels]);
+
+  const refreshRewardStatus = useCallback(async () => {
+    const profile = getJson<OwnerProfile>(AIM2M_OWNER_PROFILE_KEY);
+    setOwnerProfile(profile);
+    if (!profile?.userId && !profile?.referralCode) {
+      setRewardStatus(null);
+      return;
+    }
+    try {
+      const ownerToken = encodeURIComponent(profile.userId || profile.referralCode);
+      const res = await fetch(`/api/rw?owner=${ownerToken}`, { cache: "no-store" });
+      const json = (await res.json()) as RewardStatusResponse;
+      if (!res.ok || !("ok" in json) || !json.ok) {
+        setRewardStatus(null);
+        return;
+      }
+      setRewardStatus(json);
+    } catch {
+      setRewardStatus(null);
+    }
+  }, []);
+
+  useEffect(() => {
+    void refreshRewardStatus();
+    const handleFocus = () => {
+      void refreshRewardStatus();
+    };
+    window.addEventListener("focus", handleFocus);
+    return () => window.removeEventListener("focus", handleFocus);
+  }, [refreshRewardStatus]);
 
   const refreshFrog = useCallback(async () => {
     try {
@@ -465,7 +519,9 @@ export default function MainPage() {
         const notice =
           json.mode === "code"
             ? "统一激活码验证成功，主界面已解锁。"
-            : "支付解锁成功，主界面已解锁。";
+            : json.mode === "reward"
+              ? "邀请奖励激活码验证成功，主界面已解锁。"
+              : "支付解锁成功，主界面已解锁。";
         setString(AIM2M_ACTIVATION_NOTICE_KEY, notice);
         setSuccessMsg(notice);
         setApiOnline(true);
@@ -898,6 +954,86 @@ export default function MainPage() {
               <div className="mt-3 text-xs text-slate-400">
                 解锁信息仅保存在 HttpOnly Cookie，不走 localStorage。
               </div>
+            </div>
+
+            <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-6 shadow-xl">
+              <div className="mb-3 flex items-center gap-2">
+                <Users className="h-5 w-5 text-cyan-200/90" />
+                <h2 className="text-lg font-semibold">邀请奖励</h2>
+              </div>
+              {ownerProfile ? (
+                <div className="space-y-3">
+                  <div className="rounded-2xl border border-slate-800 bg-slate-950/50 p-4 text-sm text-slate-300">
+                    {rewardStatus && rewardStatus.ok ? (
+                      rewardStatus.active_reward_code ? (
+                        `已邀请 ${rewardStatus.referral_count} 人，已获得免费激活码。`
+                      ) : (
+                        `已邀请 ${rewardStatus.referral_count} 人，再邀 ${rewardStatus.remaining_to_reward} 人即可获免费激活码。`
+                      )
+                    ) : (
+                      "正在同步邀请奖励进度…"
+                    )}
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="rounded-2xl border border-slate-800 bg-slate-950/50 p-4">
+                      <div className="text-xs text-slate-400">已邀请</div>
+                      <div className="mt-2 text-2xl font-bold text-cyan-100">
+                        {rewardStatus && rewardStatus.ok ? rewardStatus.referral_count : "—"}
+                      </div>
+                    </div>
+                    <div className="rounded-2xl border border-slate-800 bg-slate-950/50 p-4">
+                      <div className="text-xs text-slate-400">累计奖励</div>
+                      <div className="mt-2 text-2xl font-bold text-amber-100">
+                        {rewardStatus && rewardStatus.ok ? rewardStatus.reward_count : "—"}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        void copyText(
+                          rewardStatus && rewardStatus.ok
+                            ? rewardStatus.owner.referral_link
+                            : ownerProfile.referralLink,
+                        )
+                      }
+                      className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-white/5 px-3 text-xs font-semibold text-slate-200 shadow-[0_0_0_1px_rgba(229,231,235,0.12)] transition hover:bg-white/10"
+                    >
+                      <Copy className="h-4 w-4" />
+                      一键复制专属链接
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void refreshRewardStatus()}
+                      className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-white/5 px-3 text-xs font-semibold text-slate-200 shadow-[0_0_0_1px_rgba(229,231,235,0.12)] transition hover:bg-white/10"
+                    >
+                      <RefreshCw className="h-4 w-4" />
+                      刷新奖励
+                    </button>
+                  </div>
+                  {rewardStatus && rewardStatus.ok && rewardStatus.active_reward_code ? (
+                    <div className="rounded-2xl border border-emerald-500/25 bg-emerald-500/10 p-4 shadow-[0_0_0_1px_rgba(16,185,129,0.18)]">
+                      <div className="text-sm font-semibold text-emerald-100">获得免费激活码</div>
+                      <div className="mt-2 break-all font-mono text-sm text-slate-100">
+                        {rewardStatus.active_reward_code}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => void copyText(rewardStatus.active_reward_code ?? "")}
+                        className="mt-3 inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-white/5 px-3 text-xs font-semibold text-slate-200 shadow-[0_0_0_1px_rgba(229,231,235,0.12)] transition hover:bg-white/10"
+                      >
+                        <Copy className="h-4 w-4" />
+                        复制激活码
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-slate-800 bg-slate-950/50 p-4 text-sm text-slate-300">
+                  先通过注册系统创建你的档案，主界面才会显示专属短链与邀请奖励进度。
+                </div>
+              )}
             </div>
 
             <Link

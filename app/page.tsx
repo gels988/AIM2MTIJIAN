@@ -20,6 +20,17 @@ import {
 } from "lucide-react";
 
 import RadarChart from "@/app/components/RadarChart";
+import {
+  AIM2M_ACTIVATION_NOTICE_KEY,
+  AIM2M_STATUS_KEY,
+  isStoredUnlockStatus,
+} from "@/src/security/unified_activation";
+import {
+  getString,
+  removeKey,
+  setString,
+  setUnlocked,
+} from "@/src/components/standard/StateStore";
 
 type PublicMetricRow = {
   id: string;
@@ -294,6 +305,7 @@ export default function MainPage() {
   );
   const [generatedAt, setGeneratedAt] = useState<string>("");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   const [frogInput, setFrogInput] = useState("");
   const [frogLine, setFrogLine] = useState("[PROT-1.1] BinaryBagua: --- | Status: INIT");
@@ -321,13 +333,17 @@ export default function MainPage() {
   const checkAuth = useCallback(async () => {
     triggerPulse();
     setAuthLoading(true);
+    const localActive = isStoredUnlockStatus(getString(AIM2M_STATUS_KEY));
+    setActive(localActive);
     try {
       const res = await fetch("/api/auth", { cache: "no-store" });
       const json = (await res.json()) as { active?: boolean };
-      setActive(Boolean(json.active));
+      const activeNow = Boolean(json.active);
+      setActive(activeNow);
+      setUnlocked(activeNow);
       setApiOnline(res.ok);
     } catch {
-      setActive(false);
+      setActive(localActive);
       setApiOnline(false);
     } finally {
       setAuthLoading(false);
@@ -337,6 +353,14 @@ export default function MainPage() {
   useEffect(() => {
     void checkAuth();
   }, [checkAuth]);
+
+  useEffect(() => {
+    const pendingNotice = getString(AIM2M_ACTIVATION_NOTICE_KEY);
+    if (pendingNotice) {
+      setSuccessMsg(pendingNotice);
+      removeKey(AIM2M_ACTIVATION_NOTICE_KEY);
+    }
+  }, []);
 
   const refreshChannels = useCallback(async () => {
     triggerPulse();
@@ -420,6 +444,7 @@ export default function MainPage() {
       triggerPulse();
       setUnlockLoading(true);
       setErrorMsg(null);
+      setSuccessMsg(null);
       try {
         const res = await fetch("/api/activate", {
           method: "POST",
@@ -430,13 +455,24 @@ export default function MainPage() {
           setErrorMsg("解锁失败：请确认激活码或支付状态。");
           return;
         }
-        const json = (await res.json()) as { success?: boolean };
-        if (!json.success) {
+        const json = (await res.json()) as { success?: boolean; active?: boolean; mode?: string };
+        if (!json.success || !json.active) {
           setErrorMsg("解锁失败：请确认激活码或支付状态。");
           return;
         }
+        setUnlocked(true);
+        setActive(true);
+        const notice =
+          json.mode === "code"
+            ? "统一激活码验证成功，主界面已解锁。"
+            : "支付解锁成功，主界面已解锁。";
+        setString(AIM2M_ACTIVATION_NOTICE_KEY, notice);
+        setSuccessMsg(notice);
         setApiOnline(true);
         await checkAuth();
+        window.setTimeout(() => {
+          window.location.replace("/");
+        }, 220);
       } catch {
         setErrorMsg("解锁失败：网络异常。");
         setApiOnline(false);
@@ -762,6 +798,12 @@ export default function MainPage() {
                 </div>
               </div>
             </div>
+          </div>
+        ) : null}
+
+        {successMsg ? (
+          <div className="mb-6 rounded-2xl border border-emerald-500/25 bg-emerald-500/10 px-5 py-4 text-sm text-emerald-100 shadow-[0_0_0_1px_rgba(16,185,129,0.18)]">
+            {successMsg}
           </div>
         ) : null}
 

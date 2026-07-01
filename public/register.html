@@ -429,8 +429,9 @@
   </div>
 
   <script>
-    (function () {
+    (async function () {
       const STORAGE_KEY = "aim2m_register_records_v1";
+      const AIM2M_STATUS_KEY = "AIM2M_STATUS";
       const identifierInput = document.getElementById("identifier");
       const referrerInput = document.getElementById("referrerId");
       const submitBtn = document.getElementById("submitBtn");
@@ -445,6 +446,52 @@
       const params = new URLSearchParams(window.location.search);
       const refFromQuery = params.get("ref");
       if (refFromQuery) referrerInput.value = refFromQuery;
+
+      function isStoredActive() {
+        try {
+          return (
+            window.localStorage.getItem(AIM2M_STATUS_KEY) === "ACTIVE" ||
+            window.sessionStorage.getItem(AIM2M_STATUS_KEY) === "ACTIVE"
+          );
+        } catch {
+          return false;
+        }
+      }
+
+      function persistActive(active) {
+        try {
+          const value = active ? "ACTIVE" : "INACTIVE";
+          window.localStorage.setItem(AIM2M_STATUS_KEY, value);
+          window.sessionStorage.setItem(AIM2M_STATUS_KEY, value);
+        } catch {
+          // Ignore storage failures and keep server auth as source of truth.
+        }
+      }
+
+      async function gateActivatedVisitor() {
+        const storedActive = isStoredActive();
+        try {
+          const res = await fetch("/api/auth", { cache: "no-store" });
+          const json = await res.json();
+          const active = Boolean(json && json.active === true);
+          persistActive(active);
+          if (active) {
+            window.location.replace("/");
+            return true;
+          }
+          return false;
+        } catch {
+          if (storedActive) {
+            window.location.replace("/");
+            return true;
+          }
+          return false;
+        }
+      }
+
+      if (await gateActivatedVisitor()) {
+        return;
+      }
 
       function loadRecords() {
         try {

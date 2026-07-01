@@ -1,4 +1,7 @@
+import { AIM2M_STATUS_KEY } from "@/src/security/unified_activation";
+
 export type StorageValue = string | number | boolean | null | object;
+export { AIM2M_STATUS_KEY };
 
 function hasWindow() {
   return typeof window !== "undefined";
@@ -32,8 +35,6 @@ export function getJson<T>(key: string): T | null {
 export function setJson(key: string, value: StorageValue) {
   setString(key, JSON.stringify(value));
 }
-
-export const AIM2M_STATUS_KEY = "AIM2M_STATUS";
 
 export type UnlockStatus = "ACTIVE" | "INACTIVE";
 

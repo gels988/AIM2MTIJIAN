@@ -301,6 +301,38 @@
       margin-top: 12px;
     }
 
+    .activation-card {
+      margin-top: 18px;
+      border-radius: 18px;
+      border: 1px solid rgba(245, 158, 11, 0.24);
+      background: rgba(245, 158, 11, 0.08);
+      padding: 16px;
+      box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.08);
+    }
+
+    .activation-title {
+      color: #fde68a;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .activation-hint {
+      margin-top: 8px;
+      color: #e2e8f0;
+      font-size: 13px;
+      line-height: 1.7;
+    }
+
+    .activation-status {
+      margin-top: 12px;
+      color: #fef3c7;
+      font-size: 12px;
+      line-height: 1.6;
+      word-break: break-word;
+    }
+
     .list {
       display: grid;
       gap: 12px;
@@ -418,6 +450,21 @@
               <a id="openReferralBtn" class="link-btn secondary" href="#" target="_blank" rel="noreferrer">打开注册链接</a>
             </div>
           </div>
+
+          <div class="activation-card">
+            <div class="activation-title">Activation Gateway</div>
+            <div class="activation-hint">
+              注册完成后，可直接在此输入统一激活码或奖励激活码。激活成功后会自动跳转回主界面。
+            </div>
+            <div class="field" style="margin-top: 14px; margin-bottom: 0;">
+              <label for="activationCode">激活码</label>
+              <input id="activationCode" type="text" maxlength="64" placeholder="输入激活码后进入主界面" />
+            </div>
+            <div class="actions" style="margin-top: 14px;">
+              <button id="activateBtn" class="secondary" type="button">激活并进入主界面</button>
+            </div>
+            <div id="activationStatus" class="activation-status">尚未激活。输入有效激活码后会自动返回主界面。</div>
+          </div>
         </section>
 
         <section class="panel">
@@ -432,9 +479,13 @@
     (async function () {
       const STORAGE_KEY = "aim2m_register_records_v1";
       const AIM2M_STATUS_KEY = "AIM2M_STATUS";
+      const AIM2M_ACTIVATION_NOTICE_KEY = "AIM2M_ACTIVATION_NOTICE";
       const OWNER_PROFILE_KEY = "AIM2M_OWNER_PROFILE";
       const identifierInput = document.getElementById("identifier");
       const referrerInput = document.getElementById("referrerId");
+      const activationInput = document.getElementById("activationCode");
+      const activateBtn = document.getElementById("activateBtn");
+      const activationStatus = document.getElementById("activationStatus");
       const submitBtn = document.getElementById("submitBtn");
       const syncBtn = document.getElementById("syncBtn");
       const statusBox = document.getElementById("statusBox");
@@ -524,6 +575,18 @@
         statusBox.className = "status" + (tone ? " " + tone : "");
       }
 
+      function setActivationStatus(text, tone) {
+        activationStatus.textContent = text;
+        activationStatus.style.color =
+          tone === "success"
+            ? "#d1fae5"
+            : tone === "warn"
+              ? "#fde68a"
+              : tone === "error"
+                ? "#fecdd3"
+                : "#fef3c7";
+      }
+
       function setReferralLink(link) {
         if (!link) {
           referralBox.style.display = "none";
@@ -604,6 +667,55 @@
         record.rewardCodeIssued = typeof json.reward_code_issued === "string" ? json.reward_code_issued : "";
         record.syncedAt = new Date().toISOString();
         return record;
+      }
+
+      async function activateAndEnter() {
+        const code = activationInput.value.trim();
+        if (!code) {
+          setActivationStatus("请先输入激活码。", "warn");
+          activationInput.focus();
+          return;
+        }
+
+        activateBtn.disabled = true;
+        activationInput.disabled = true;
+        setActivationStatus("激活中，正在校验并准备跳转主界面…", "");
+        console.log("[register] activate:start", { hasCode: Boolean(code) });
+
+        try {
+          const res = await fetch("/api/activate", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ code: code }),
+          });
+          const json = await res.json();
+          if (!res.ok || !json || json.success !== true || json.active !== true) {
+            setActivationStatus("激活失败：激活码无效或当前网络异常。", "error");
+            console.log("[register] activate:failed", { ok: res.ok, json: json });
+            return;
+          }
+
+          persistActive(true);
+          localStorage.setItem(
+            AIM2M_ACTIVATION_NOTICE_KEY,
+            json.mode === "reward"
+              ? "邀请奖励激活码验证成功，主界面已解锁。"
+              : "统一激活码验证成功，主界面已解锁。",
+          );
+          setActivationStatus("激活成功，正在进入主界面…", "success");
+          console.log("[register] activate:success", { mode: json.mode, redirect: "/" });
+          window.setTimeout(function () {
+            window.location.replace("/");
+          }, 320);
+        } catch (error) {
+          console.log("[register] activate:error", error);
+          setActivationStatus("激活失败：浏览器未能连接到激活接口。", "error");
+        } finally {
+          window.setTimeout(function () {
+            activateBtn.disabled = false;
+            activationInput.disabled = false;
+          }, 450);
+        }
       }
 
       async function submit() {
@@ -705,9 +817,21 @@
         }
       });
 
+      activateBtn.addEventListener("click", function () {
+        void activateAndEnter();
+      });
+
+      activationInput.addEventListener("keydown", function (event) {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          void activateAndEnter();
+        }
+      });
+
       renderRecords();
       const latestSynced = loadRecords().slice().reverse().find((item) => item.synced && item.referralLink);
       setReferralLink(latestSynced ? latestSynced.referralLink : "");
+      setActivationStatus("尚未激活。输入有效激活码后会自动返回主界面。", "");
     })();
   </script>
 </body>

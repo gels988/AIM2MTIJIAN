@@ -12,7 +12,7 @@ export type OwnerProfile = {
 };
 
 export function normalizeActivationCode(input: unknown): string {
-  return typeof input === "string" ? input.trim() : "";
+  return typeof input === "string" ? input.trim().replace(/^['"]+|['"]+$/g, "") : "";
 }
 
 export function isUnifiedActivationCodeValid(code: unknown, masterCode: unknown): boolean {

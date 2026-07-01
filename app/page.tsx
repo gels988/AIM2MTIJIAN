@@ -95,6 +95,7 @@ const UI_TEXT: Record<
     radarNote: string;
     supportNode: string;
     refresh: string;
+    register: string;
     citizens: string;
     selfCheck: string;
   }
@@ -126,6 +127,7 @@ const UI_TEXT: Record<
     radarNote: "维度 Token 仅在服务端生成",
     supportNode: "为节点造血提供冗余支持 (Support Node Redundancy)",
     refresh: "刷新状态",
+    register: "注册系统",
     citizens: "子民系统",
     selfCheck: "自检系统",
   },
@@ -156,6 +158,7 @@ const UI_TEXT: Record<
     radarNote: "Tokens are server-generated only",
     supportNode: "Support Node Redundancy",
     refresh: "Refresh",
+    register: "Register",
     citizens: "Citizens",
     selfCheck: "Self-check",
   },
@@ -185,6 +188,7 @@ const UI_TEXT: Record<
     radarNote: "Token はサーバ側生成",
     supportNode: "冗長性支援 (Support Node Redundancy)",
     refresh: "更新",
+    register: "登録システム",
     citizens: "子民システム",
     selfCheck: "自己診断",
   },
@@ -214,6 +218,7 @@ const UI_TEXT: Record<
     radarNote: "토큰은 서버에서만 생성",
     supportNode: "노드 잉여 지원 (Support Node Redundancy)",
     refresh: "새로고침",
+    register: "등록 시스템",
     citizens: "시민 시스템",
     selfCheck: "자가 점검",
   },
@@ -592,6 +597,14 @@ export default function MainPage() {
                 捐赠 / Donation
               </Link>
               <Link
+                href="/register.html"
+                target="_blank"
+                className="inline-flex items-center gap-2 rounded-xl bg-white/5 px-3 py-2 text-slate-200 shadow-[0_0_0_1px_rgba(229,231,235,0.12)] transition hover:bg-white/10"
+              >
+                <Users className="h-4 w-4 text-cyan-200/90" />
+                {t.register}
+              </Link>
+              <Link
                 href="/citizens"
                 className="inline-flex items-center gap-2 rounded-xl bg-white/5 px-3 py-2 text-slate-200 shadow-[0_0_0_1px_rgba(229,231,235,0.12)] transition hover:bg-white/10"
               >
@@ -730,6 +743,14 @@ export default function MainPage() {
                   >
                     <Wrench className="h-4 w-4 text-emerald-200/90" />
                     打开自检系统
+                  </Link>
+                  <Link
+                    href="/register.html"
+                    target="_blank"
+                    className="inline-flex items-center gap-2 rounded-xl bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200 shadow-[0_0_0_1px_rgba(229,231,235,0.12)] transition hover:bg-white/10"
+                  >
+                    <Users className="h-4 w-4 text-cyan-200/90" />
+                    打开注册系统
                   </Link>
                   <Link
                     href="/citizens"

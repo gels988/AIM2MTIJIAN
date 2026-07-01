@@ -35,9 +35,11 @@ export async function POST(req: Request) {
 
   const code = (body as { code?: unknown }).code;
   const mode = (body as { mode?: unknown }).mode;
+  const normalizedCode = typeof code === "string" ? code.trim() : "";
+  const normalizedMasterCode = masterCode.trim();
 
   const isPaymentUnlock = mode === "payment";
-  const isCodeUnlock = typeof code === "string" && code === masterCode;
+  const isCodeUnlock = normalizedCode.length > 0 && normalizedCode === normalizedMasterCode;
 
   if (!isPaymentUnlock && !isCodeUnlock) {
     return NextResponse.json({ success: false }, { status: 403 });
@@ -48,7 +50,7 @@ export async function POST(req: Request) {
     .setExpirationTime("2h")
     .sign(secret);
 
-  const res = NextResponse.json({ success: true });
+  const res = NextResponse.json({ success: true, mode: isCodeUnlock ? "code" : "payment" });
   res.cookies.set("aim2m_auth", token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
@@ -58,4 +60,3 @@ export async function POST(req: Request) {
   });
   return res;
 }
-

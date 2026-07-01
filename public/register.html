@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>注册系统 - AIM2M</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #020617;
+      --panel: rgba(8, 15, 28, 0.88);
+      --line: rgba(148, 163, 184, 0.16);
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --cyan: #22d3ee;
+      --violet: #a78bfa;
+      --emerald: #34d399;
+      --rose: #fb7185;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at 12% 12%, rgba(34, 211, 238, 0.16), transparent 24%),
+        radial-gradient(circle at 88% 8%, rgba(167, 139, 250, 0.2), transparent 26%),
+        radial-gradient(circle at 50% 100%, rgba(16, 185, 129, 0.12), transparent 35%),
+        linear-gradient(180deg, #020617 0%, #050b14 48%, #020617 100%);
+      color: var(--text);
+      padding: 32px 16px;
+    }
+
+    .shell {
+      margin: 0 auto;
+      max-width: 1120px;
+    }
+
+    .hero {
+      position: relative;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 28px;
+      background:
+        linear-gradient(135deg, rgba(8, 15, 28, 0.94), rgba(5, 11, 20, 0.92)),
+        var(--panel);
+      box-shadow:
+        0 20px 60px rgba(0, 0, 0, 0.55),
+        0 0 0 1px rgba(34, 211, 238, 0.06);
+      padding: 28px;
+    }
+
+    .hero::before,
+    .hero::after {
+      content: "";
+      position: absolute;
+      border-radius: 999px;
+      filter: blur(18px);
+      pointer-events: none;
+    }
+
+    .hero::before {
+      width: 320px;
+      height: 320px;
+      right: -80px;
+      top: -80px;
+      background: radial-gradient(circle, rgba(34, 211, 238, 0.28), transparent 65%);
+    }
+
+    .hero::after {
+      width: 300px;
+      height: 300px;
+      left: -90px;
+      bottom: -120px;
+      background: radial-gradient(circle, rgba(167, 139, 250, 0.22), transparent 70%);
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--line);
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: var(--cyan);
+      box-shadow: 0 0 12px rgba(34, 211, 238, 0.85);
+    }
+
+    h1 {
+      margin: 18px 0 8px;
+      font-size: clamp(30px, 5vw, 52px);
+      line-height: 1.04;
+      letter-spacing: -0.03em;
+    }
+
+    .gradient {
+      background: linear-gradient(90deg, #e2e8f0 0%, #67e8f9 42%, #c4b5fd 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .subtitle {
+      max-width: 780px;
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.8;
+    }
+
+    .grid {
+      margin-top: 24px;
+      display: grid;
+      grid-template-columns: minmax(0, 1.25fr) minmax(320px, 0.75fr);
+      gap: 20px;
+    }
+
+    .panel {
+      position: relative;
+      border-radius: 24px;
+      border: 1px solid var(--line);
+      background: rgba(2, 6, 23, 0.62);
+      padding: 22px;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
+    }
+
+    .panel::before {
+      content: "";
+      position: absolute;
+      inset: -1px;
+      border-radius: inherit;
+      padding: 1px;
+      background: linear-gradient(135deg, rgba(34, 211, 238, 0.35), rgba(167, 139, 250, 0.12), rgba(52, 211, 153, 0.2));
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      pointer-events: none;
+    }
+
+    .panel-title {
+      font-size: 14px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #cbd5e1;
+      margin-bottom: 18px;
+    }
+
+    .field {
+      margin-bottom: 14px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      color: #cbd5e1;
+      font-size: 13px;
+    }
+
+    input {
+      width: 100%;
+      height: 48px;
+      border-radius: 14px;
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      background: rgba(2, 6, 23, 0.9);
+      color: var(--text);
+      padding: 0 14px;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    input:focus {
+      border-color: rgba(34, 211, 238, 0.58);
+      box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.12);
+    }
+
+    .actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 16px;
+    }
+
+    button,
+    .link-btn {
+      appearance: none;
+      border: none;
+      text-decoration: none;
+      cursor: pointer;
+      min-height: 48px;
+      padding: 0 18px;
+      border-radius: 14px;
+      font-size: 14px;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      transition: transform 0.15s ease, opacity 0.15s ease, background 0.15s ease;
+    }
+
+    button:hover,
+    .link-btn:hover {
+      transform: translateY(-1px);
+    }
+
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .primary {
+      color: #04111b;
+      background: linear-gradient(135deg, #67e8f9 0%, #22d3ee 45%, #a78bfa 100%);
+      box-shadow: 0 14px 34px rgba(34, 211, 238, 0.24);
+    }
+
+    .secondary {
+      color: #e2e8f0;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--line);
+    }
+
+    .status {
+      min-height: 52px;
+      margin-top: 16px;
+      border-radius: 16px;
+      border: 1px solid rgba(148, 163, 184, 0.16);
+      background: rgba(15, 23, 42, 0.55);
+      padding: 14px;
+      color: #cbd5e1;
+      font-size: 13px;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .status.success {
+      border-color: rgba(52, 211, 153, 0.3);
+      color: #d1fae5;
+    }
+
+    .status.warn {
+      border-color: rgba(251, 191, 36, 0.28);
+      color: #fde68a;
+    }
+
+    .status.error {
+      border-color: rgba(251, 113, 133, 0.28);
+      color: #fecdd3;
+    }
+
+    .referral-box {
+      display: none;
+      margin-top: 16px;
+      border-radius: 16px;
+      border: 1px solid rgba(34, 211, 238, 0.24);
+      background: rgba(34, 211, 238, 0.08);
+      padding: 14px;
+    }
+
+    .referral-title {
+      color: #cffafe;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .referral-link {
+      margin-top: 8px;
+      color: #e2e8f0;
+      font-size: 13px;
+      line-height: 1.7;
+      word-break: break-all;
+    }
+
+    .referral-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+
+    .list {
+      display: grid;
+      gap: 12px;
+      max-height: 430px;
+      overflow: auto;
+      padding-right: 4px;
+    }
+
+    .item {
+      border-radius: 18px;
+      border: 1px solid rgba(148, 163, 184, 0.16);
+      background: rgba(15, 23, 42, 0.56);
+      padding: 14px;
+    }
+
+    .item-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+
+    .item-title {
+      font-weight: 700;
+      color: #f8fafc;
+      font-size: 14px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 78px;
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .pill.synced {
+      color: #d1fae5;
+      background: rgba(16, 185, 129, 0.14);
+      border: 1px solid rgba(16, 185, 129, 0.2);
+    }
+
+    .pill.local {
+      color: #bfdbfe;
+      background: rgba(59, 130, 246, 0.14);
+      border: 1px solid rgba(59, 130, 246, 0.2);
+    }
+
+    .item-meta {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.6;
+    }
+
+    .empty {
+      border: 1px dashed rgba(148, 163, 184, 0.18);
+      border-radius: 18px;
+      padding: 20px;
+      color: var(--muted);
+      text-align: center;
+      font-size: 13px;
+    }
+
+    @media (max-width: 920px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <section class="hero">
+      <div class="topbar">
+        <div class="badge"><span class="dot"></span><span>REGISTER NODE / LOCAL-FIRST</span></div>
+        <a class="link-btn secondary" href="/">返回主界面</a>
+      </div>
+
+      <h1><span class="gradient">注册系统</span> / 子民繁殖入口</h1>
+      <div class="subtitle">
+        这里是对外可访问的注册入口。系统会优先将记录写入云端子民系统；若云端暂时不可用，会先保存在浏览器本地档案库，稍后可继续补同步，保证客户与子民繁殖记录不断线。
+      </div>
+
+      <div class="grid">
+        <section class="panel">
+          <div class="panel-title">Enrollment Console</div>
+
+          <div class="field">
+            <label for="identifier">联系方式 / 标识</label>
+            <input id="identifier" type="text" maxlength="64" placeholder="手机号 / 邮箱 / 任意唯一标识" />
+          </div>
+
+          <div class="field">
+            <label for="referrerId">推荐人 ID（可选）</label>
+            <input id="referrerId" type="text" maxlength="64" placeholder="可自动携带 ?ref=..." />
+          </div>
+
+          <div class="actions">
+            <button id="submitBtn" class="primary" type="button">创建注册档案</button>
+            <button id="syncBtn" class="secondary" type="button">重试同步本地记录</button>
+          </div>
+
+          <div id="statusBox" class="status">等待提交。系统将优先写入云端，失败时自动落盘到本地浏览器档案库。</div>
+          <div id="referralBox" class="referral-box">
+            <div class="referral-title">专属注册链接</div>
+            <div id="referralLink" class="referral-link"></div>
+            <div class="referral-actions">
+              <button id="copyReferralBtn" class="secondary" type="button">复制专属链接</button>
+              <a id="openReferralBtn" class="link-btn secondary" href="#" target="_blank" rel="noreferrer">打开注册链接</a>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-title">Local Survival Ledger</div>
+          <div id="records" class="list"></div>
+        </section>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    (function () {
+      const STORAGE_KEY = "aim2m_register_records_v1";
+      const identifierInput = document.getElementById("identifier");
+      const referrerInput = document.getElementById("referrerId");
+      const submitBtn = document.getElementById("submitBtn");
+      const syncBtn = document.getElementById("syncBtn");
+      const statusBox = document.getElementById("statusBox");
+      const recordsBox = document.getElementById("records");
+      const referralBox = document.getElementById("referralBox");
+      const referralLinkBox = document.getElementById("referralLink");
+      const copyReferralBtn = document.getElementById("copyReferralBtn");
+      const openReferralBtn = document.getElementById("openReferralBtn");
+
+      const params = new URLSearchParams(window.location.search);
+      const refFromQuery = params.get("ref");
+      if (refFromQuery) referrerInput.value = refFromQuery;
+
+      function loadRecords() {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          return raw ? JSON.parse(raw) : [];
+        } catch {
+          return [];
+        }
+      }
+
+      function saveRecords(records) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+      }
+
+      function setStatus(text, tone) {
+        statusBox.textContent = text;
+        statusBox.className = "status" + (tone ? " " + tone : "");
+      }
+
+      function setReferralLink(link) {
+        if (!link) {
+          referralBox.style.display = "none";
+          referralLinkBox.textContent = "";
+          openReferralBtn.href = "#";
+          return;
+        }
+
+        referralBox.style.display = "block";
+        referralLinkBox.textContent = link;
+        openReferralBtn.href = link;
+      }
+
+      function renderRecords() {
+        const records = loadRecords();
+        if (!records.length) {
+          recordsBox.innerHTML = '<div class="empty">暂无本地注册记录。提交后会在这里形成可追溯台账。</div>';
+          return;
+        }
+
+        recordsBox.innerHTML = records
+          .slice()
+          .reverse()
+          .map((item) => {
+            const synced = item.synced ? "synced" : "local";
+            const badge = item.synced ? "云端已同步" : "仅本地保存";
+            const remoteId = item.remoteUserId ? "<div>remote_user_id: " + item.remoteUserId + "</div>" : "";
+            const ref = item.referrerId ? "<div>referrer_id: " + item.referrerId + "</div>" : "";
+            const link = item.referralLink
+              ? '<div>share_link: <a href="' + escapeHtml(item.referralLink) + '" target="_blank" rel="noreferrer">' + escapeHtml(item.referralLink) + "</a></div>"
+              : "";
+            return (
+              '<article class="item">' +
+                '<div class="item-head">' +
+                  '<div class="item-title">' + escapeHtml(item.identifier) + '</div>' +
+                  '<div class="pill ' + synced + '">' + badge + '</div>' +
+                '</div>' +
+                '<div class="item-meta">' +
+                  '<div>created_at: ' + escapeHtml(item.createdAt) + '</div>' +
+                  ref +
+                  remoteId +
+                  link +
+                '</div>' +
+              '</article>'
+            );
+          })
+          .join("");
+      }
+
+      function escapeHtml(text) {
+        return String(text)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#39;");
+      }
+
+      async function syncOne(record) {
+        const res = await fetch("/api/citizens/register", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            identifier: record.identifier,
+            referrer_id: record.referrerId || undefined,
+          }),
+        });
+
+        const json = await res.json();
+        if (!res.ok || !json || json.ok !== true) {
+          const error = json && json.error ? json.error : "register_failed";
+          throw new Error(error);
+        }
+
+        record.synced = true;
+        record.remoteUserId = json.user && (json.user.id || json.user.phone_number || "");
+        record.referralLink = typeof json.referral_link === "string" ? json.referral_link : "";
+        record.syncedAt = new Date().toISOString();
+        return record;
+      }
+
+      async function submit() {
+        const identifier = identifierInput.value.trim();
+        const referrerId = referrerInput.value.trim();
+        if (!identifier) {
+          setStatus("请先输入联系方式、邮箱或唯一标识。", "warn");
+          return;
+        }
+
+        submitBtn.disabled = true;
+        const now = new Date().toISOString();
+        const records = loadRecords();
+        const record = {
+          localId: "reg_" + Date.now().toString(36),
+          identifier,
+          referrerId,
+          createdAt: now,
+          synced: false,
+          remoteUserId: "",
+        };
+        records.push(record);
+        saveRecords(records);
+        renderRecords();
+        setStatus("已写入本地档案库，正在尝试同步云端…", "");
+
+        try {
+          await syncOne(record);
+          saveRecords(records);
+          renderRecords();
+          setReferralLink(record.referralLink);
+          setStatus("注册成功：本地与云端均已完成记录。", "success");
+        } catch (error) {
+          renderRecords();
+          setStatus("云端暂不可用，记录已保存在本地浏览器档案库。稍后可点击“重试同步本地记录”。错误：" + (error && error.message ? error.message : "unknown"), "warn");
+        } finally {
+          submitBtn.disabled = false;
+        }
+      }
+
+      async function syncPending() {
+        syncBtn.disabled = true;
+        const records = loadRecords();
+        const pending = records.filter((item) => !item.synced);
+        if (!pending.length) {
+          setStatus("没有待同步记录。本地与云端目前是一致的。", "success");
+          syncBtn.disabled = false;
+          return;
+        }
+
+        let success = 0;
+        for (const item of pending) {
+          try {
+            await syncOne(item);
+            success += 1;
+          } catch {
+            // Keep local-only state; continue with the rest.
+          }
+        }
+
+        saveRecords(records);
+        renderRecords();
+        if (success === pending.length) {
+          const latestSynced = records.slice().reverse().find((item) => item.synced && item.referralLink);
+          setReferralLink(latestSynced ? latestSynced.referralLink : "");
+          setStatus("所有本地记录已同步到云端。", "success");
+        } else if (success > 0) {
+          const latestSynced = records.slice().reverse().find((item) => item.synced && item.referralLink);
+          setReferralLink(latestSynced ? latestSynced.referralLink : "");
+          setStatus("部分记录同步成功，剩余记录继续保存在本地。", "warn");
+        } else {
+          setStatus("云端仍不可用，所有记录继续保存在本地浏览器档案库。", "error");
+        }
+        syncBtn.disabled = false;
+      }
+
+      submitBtn.addEventListener("click", function () {
+        void submit();
+      });
+
+      syncBtn.addEventListener("click", function () {
+        void syncPending();
+      });
+
+      copyReferralBtn.addEventListener("click", async function () {
+        const link = referralLinkBox.textContent.trim();
+        if (!link) return;
+        try {
+          await navigator.clipboard.writeText(link);
+          setStatus("专属注册链接已复制，可直接分享给新客户。", "success");
+        } catch {
+          setStatus("复制失败，请手动复制专属注册链接。", "warn");
+        }
+      });
+
+      renderRecords();
+      const latestSynced = loadRecords().slice().reverse().find((item) => item.synced && item.referralLink);
+      setReferralLink(latestSynced ? latestSynced.referralLink : "");
+    })();
+  </script>
+</body>
+</html>

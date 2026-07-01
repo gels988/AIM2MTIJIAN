@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 type RegisterResponse =
-  | { ok: true; created: boolean; user: Record<string, unknown> }
+  | { ok: true; created: boolean; user: Record<string, unknown>; referral_link?: string }
   | { ok: false; error: string; details?: string };
 
 type PingResponse = { ok: boolean; error?: string; details?: string };
@@ -19,6 +19,7 @@ export default function CitizensPage() {
   const [dbOk, setDbOk] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<RegisterResponse | null>(null);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -63,7 +64,9 @@ export default function CitizensPage() {
       if (ok) {
         const created = typeof json.created === "boolean" ? json.created : false;
         const user = isRecord(json.user) ? json.user : {};
-        setResult({ ok: true, created, user });
+        const referralLink =
+          typeof json.referral_link === "string" ? json.referral_link : undefined;
+        setResult({ ok: true, created, user, referral_link: referralLink });
         setDbOk(true);
       } else {
         const error = typeof json.error === "string" ? json.error : "unknown_error";
@@ -83,6 +86,19 @@ export default function CitizensPage() {
     if (dbOk === null) return "bg-slate-500/15 text-slate-200";
     return dbOk ? "bg-emerald-500/15 text-emerald-200" : "bg-rose-500/15 text-rose-200";
   }, [dbOk]);
+
+  const referralLink = result?.ok ? result.referral_link ?? "" : "";
+
+  const copyReferralLink = useCallback(async () => {
+    if (!referralLink) return;
+    try {
+      await navigator.clipboard.writeText(referralLink);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1600);
+    } catch {
+      setCopied(false);
+    }
+  }, [referralLink]);
 
   return (
     <main className="min-h-dvh bg-slate-950 px-4 py-8 text-slate-100 md:px-8">
@@ -137,6 +153,30 @@ export default function CitizensPage() {
               <div>提交后将显示数据库回执（若 Supabase 未配置会返回错误）。</div>
             )}
           </div>
+
+          {result?.ok && referralLink ? (
+            <div className="mt-4 rounded-2xl border border-cyan-400/20 bg-cyan-500/10 p-4 shadow-[0_0_0_1px_rgba(34,211,238,0.12)]">
+              <div className="text-sm font-semibold text-cyan-100">专属注册链接</div>
+              <div className="mt-2 break-all text-xs leading-6 text-slate-200">{referralLink}</div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => void copyReferralLink()}
+                  className="rounded-xl bg-white/5 px-3 py-2 text-xs font-semibold text-slate-100 shadow-[0_0_0_1px_rgba(229,231,235,0.12)] transition hover:bg-white/10"
+                >
+                  {copied ? "已复制" : "复制专属链接"}
+                </button>
+                <a
+                  href={referralLink}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="rounded-xl bg-white/5 px-3 py-2 text-xs font-semibold text-slate-100 shadow-[0_0_0_1px_rgba(229,231,235,0.12)] transition hover:bg-white/10"
+                >
+                  打开注册链接
+                </a>
+              </div>
+            </div>
+          ) : null}
         </div>
 
         <div className="mt-6 rounded-2xl border border-slate-800 bg-slate-900/25 p-5 text-xs text-slate-400">

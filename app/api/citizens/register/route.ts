@@ -43,6 +43,46 @@ function normalizeIdentifier(input: string) {
   return input.trim().slice(0, 64);
 }
 
+function normalizeReferrer(input: unknown) {
+  return typeof input === "string" ? input.trim().slice(0, 64) : null;
+}
+
+function buildReferralLink(req: Request, userId: string) {
+  const base = new URL(req.url).origin;
+  return `${base}/register.html?ref=${encodeURIComponent(userId)}`;
+}
+
+async function resolveReferrerId(
+  supabase: any,
+  referrerToken: string | null,
+) {
+  if (!referrerToken) return null;
+
+  const byId = await supabase
+    .from("app_users")
+    .select("id")
+    .eq("id", referrerToken)
+    .maybeSingle();
+
+  const byIdRow = byId.data as { id?: string } | null;
+  if (!byId.error && byIdRow?.id) {
+    return byIdRow.id;
+  }
+
+  const byPhone = await supabase
+    .from("app_users")
+    .select("id")
+    .eq("phone_number", referrerToken)
+    .maybeSingle();
+
+  const byPhoneRow = byPhone.data as { id?: string } | null;
+  if (!byPhone.error && byPhoneRow?.id) {
+    return byPhoneRow.id;
+  }
+
+  return null;
+}
+
 export async function POST(req: Request) {
   const env = getSupabaseEnv();
   if (!env) {
@@ -76,7 +116,7 @@ export async function POST(req: Request) {
 
   const identifierRaw = typeof body.identifier === "string" ? body.identifier : "";
   const identifier = normalizeIdentifier(identifierRaw);
-  const referrerId = typeof body.referrer_id === "string" ? body.referrer_id.trim() : null;
+  const referrerToken = normalizeReferrer(body.referrer_id);
 
   if (!identifier) {
     return NextResponse.json({ ok: false, error: "identifier_required" }, { status: 400 });
@@ -85,6 +125,8 @@ export async function POST(req: Request) {
   const supabase = createClient(env.url, env.anonKey, {
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
   });
+
+  const resolvedReferrerId = await resolveReferrerId(supabase, referrerToken);
 
   const existing = await supabase
     .from("app_users")
@@ -100,14 +142,43 @@ export async function POST(req: Request) {
   }
 
   if (existing.data) {
-    return NextResponse.json({ ok: true, user: existing.data, created: false });
+    let user = existing.data;
+
+    if (
+      resolvedReferrerId &&
+      !user.referrer_id &&
+      user.id !== resolvedReferrerId
+    ) {
+      const updated = await supabase
+        .from("app_users")
+        .update({ referrer_id: resolvedReferrerId })
+        .eq("id", user.id)
+        .select("id, phone_number, balance_g, referrer_id, created_at")
+        .single();
+
+      if (updated.error) {
+        return NextResponse.json(
+          { ok: false, error: "supabase_update_failed", details: updated.error.message },
+          { status: 502 },
+        );
+      }
+
+      user = updated.data;
+    }
+
+    return NextResponse.json({
+      ok: true,
+      user,
+      created: false,
+      referral_link: buildReferralLink(req, user.id),
+    });
   }
 
   const insertPayload: Record<string, unknown> = {
     phone_number: identifier,
     created_at: new Date().toISOString(),
   };
-  if (referrerId) insertPayload.referrer_id = referrerId;
+  if (resolvedReferrerId) insertPayload.referrer_id = resolvedReferrerId;
 
   const inserted = await supabase
     .from("app_users")
@@ -122,5 +193,10 @@ export async function POST(req: Request) {
     );
   }
 
-  return NextResponse.json({ ok: true, user: inserted.data, created: true });
+  return NextResponse.json({
+    ok: true,
+    user: inserted.data,
+    created: true,
+    referral_link: buildReferralLink(req, inserted.data.id),
+  });
 }
